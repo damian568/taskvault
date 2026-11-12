@@ -1,0 +1,17 @@
+# .dockerignore - files NOT sent to Docker when building the image ("build context").
+# Smaller context = faster builds, and secrets can never end up inside an image layer.
+
+# Installed inside the image by "npm ci"; the local Windows copy must not be used
+node_modules
+npm-debug.log*
+
+# Secrets must never be baked into an image (anyone with the image could read them)
+.env
+*.key
+*.crt
+*.pem
+
+# Not needed to run the app
+.git
+Dockerfile
+.dockerignore

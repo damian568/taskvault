@@ -1,0 +1,74 @@
+/* style.css - minimal styling for the TaskVault page.
+   Kept in a separate file (not inline) so nginx's Content-Security-Policy can block inline styles. */
+
+/* Base page: system font, light grey background, readable line height */
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: #f4f5f7;
+  color: #1f2328;
+  line-height: 1.5;
+}
+
+/* Centered content column with a white card look */
+main {
+  max-width: 640px;
+  margin: 40px auto;
+  padding: 24px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+h1 { margin: 0; }
+.subtitle { margin: 0 0 20px; color: #656d76; }
+
+/* Input and "Add" button side by side */
+form { display: flex; gap: 8px; }
+input[type="text"] {
+  flex: 1;                         /* input takes all remaining width */
+  padding: 8px 10px;
+  font-size: 1rem;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+}
+
+/* All buttons */
+button {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+  cursor: pointer;
+}
+button:hover { background: #eaeef2; }
+button[type="submit"] { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+button.danger { color: #cf222e; }
+
+/* Status / error message line */
+#message { min-height: 1.5em; color: #cf222e; }
+
+/* Task list: one row per task - title on the left, buttons on the right */
+ul { list-style: none; padding: 0; margin: 0; }
+li.task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eaeef2;
+}
+li.task .title { flex: 1; overflow-wrap: anywhere; }
+
+/* Finished tasks are struck through and greyed out */
+li.done .title { text-decoration: line-through; color: #8c959f; }
+li.empty { color: #656d76; padding: 10px 0; }
+
+/* Hide the form label visually but keep it for screen readers (accessibility) */
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
