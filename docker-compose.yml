@@ -1,0 +1,108 @@
+# =============================================================================
+# docker-compose.yml - runs TaskVault as 3 containers on 2 networks.
+#
+#   Browser --HTTPS 443--> nginx --HTTP 3000--> app --TCP 5432--> db --> volume
+#                          [   frontend net    ]   [ backend net, internal ]
+#
+# Start:  docker compose up --build -d      Stop:  docker compose down
+# Values like ${POSTGRES_DB} are read automatically from the .env file next to this file.
+# =============================================================================
+
+# Project name -> prefix for containers, networks and volumes (e.g. "taskvault_backend").
+name: taskvault
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # nginx - reverse proxy. The ONLY service with published ports.
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.30.3-alpine             # official image, version pinned
+    ports:
+      - "80:80"                            # host:container - HTTP, only redirects to HTTPS
+      - "443:443"                          # HTTPS - the real entry point
+    volumes:
+      # ":ro" = read-only inside the container: nginx can't modify its config or keys.
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro   # generated locally, never committed
+    networks:
+      - frontend                           # can reach the app - NOT the database
+    depends_on:
+      app:
+        condition: service_healthy         # start only when the app's /health says OK
+    restart: unless-stopped                # restart after crashes (not after a manual stop)
+
+  # ---------------------------------------------------------------------------
+  # app - Node.js API + web page. No published ports: only nginx can reach it.
+  # ---------------------------------------------------------------------------
+  app:
+    build: ./app                           # build the image from app/Dockerfile
+    environment:
+      PORT: 3000
+      DB_HOST: db                          # service name below - resolved by Docker's DNS
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${APP_DB_USER}              # the LIMITED user - the app never gets the superuser
+      DB_PASSWORD: ${APP_DB_PASSWORD}
+    networks:
+      - frontend                           # talks to nginx
+      - backend                            # talks to the db - the only service on both networks
+    depends_on:
+      db:
+        condition: service_healthy         # wait until Postgres really accepts connections
+    healthcheck:
+      # Calls our /health route (which runs SELECT 1 on the db).
+      # wget is built into the Alpine base image; non-200 -> exit 1 -> "unhealthy".
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health || exit 1"]
+      interval: 10s                        # check every 10 s
+      timeout: 5s                          # a check taking longer counts as failed
+      retries: 3                           # 3 failures in a row -> "unhealthy"
+      start_period: 30s                    # grace period while the app starts / retries the db
+    restart: unless-stopped                # app exits with code 1 if the db never comes -> restarted
+
+  # ---------------------------------------------------------------------------
+  # db - PostgreSQL. NO published ports: unreachable from the host or the internet.
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16.15-alpine           # official image, version pinned
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}          # database created on first start
+      POSTGRES_USER: ${POSTGRES_USER}      # superuser - used only for initialisation
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_DB_USER: ${APP_DB_USER}          # read by db/init.sh to create the limited user
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+    volumes:
+      # Named volume: the data survives "docker compose down" and container rebuilds.
+      # Only "docker compose down -v" deletes it (= all tasks are lost).
+      - db_data:/var/lib/postgresql/data
+      # Scripts in /docker-entrypoint-initdb.d run ONCE, on first start (empty volume).
+      - ./db/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+      # init.sql is NOT in the init folder - it's run only through init.sh (with variables).
+      - ./db/init.sql:/sql/init.sql:ro
+    networks:
+      - backend                            # only the app can reach it
+    healthcheck:
+      # pg_isready asks: "does Postgres accept connections?"
+      # -h 127.0.0.1 forces a TCP check. During first-time init Postgres only listens on
+      # a local socket, so this stays unhealthy until init.sql has completely finished.
+      # $$ = a literal $ for the shell inside the container (not replaced by Compose).
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+# -----------------------------------------------------------------------------
+# Networks - the security boundary.
+# -----------------------------------------------------------------------------
+networks:
+  frontend: {}                             # nginx <-> app
+  backend:
+    internal: true                         # app <-> db; no route to the outside world at all
+
+# -----------------------------------------------------------------------------
+# Volumes - managed by Docker, stored inside Docker Desktop's Linux VM.
+# -----------------------------------------------------------------------------
+volumes:
+  db_data: {}
