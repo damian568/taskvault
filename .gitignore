@@ -1,0 +1,29 @@
+# .gitignore - files Git must NEVER track or commit.
+# Git treats every file that matches a pattern below as if it does not exist,
+# so it can't be committed by accident with "git add .".
+
+# --- Secrets -----------------------------------------------------------------
+# Real passwords live here. Only the template .env.example is committed.
+# A secret pushed to Git is leaked forever (it stays in the history).
+.env
+
+# --- Dependencies ------------------------------------------------------------
+# Thousands of files that "npm install" recreates from package-lock.json.
+node_modules/
+
+# --- Certificates and private keys -------------------------------------------
+# Generated locally by scripts/generate-cert.*; every person makes their own.
+nginx/certs/*
+# "!" = exception: keep this empty file so the (otherwise empty) folder exists in Git.
+!nginx/certs/.gitkeep
+# Second safety net: ignore keys/certs anywhere in the repo, not only in nginx/certs.
+*.key
+*.crt
+*.pem
+
+# --- OS / tool noise ----------------------------------------------------------
+# Personal editor settings - each developer has their own
+.vscode/
+Thumbs.db
+.DS_Store
+npm-debug.log*

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<!--
+  index.html - the single page of TaskVault.
+  Served by Express (express.static) and reached through nginx at https://localhost.
+  No inline JavaScript or CSS: everything is in app.js / style.css, so nginx can
+  send a strict Content-Security-Policy that blocks inline scripts (XSS protection).
+-->
+<html lang="en">
+<head>
+  <!-- Character encoding + mobile-friendly scaling -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaskVault</title>
+  <!-- Our own stylesheet (same origin = allowed by the CSP) -->
+  <link rel="stylesheet" href="/style.css">
+  <!-- "defer" = download now, run after the HTML is parsed, so all elements exist -->
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <h1>TaskVault</h1>
+    <p class="subtitle">Internal team task tracker</p>
+
+    <!-- Form to create a task. app.js intercepts "submit" and calls POST /api/tasks.
+         required + maxlength give quick feedback in the browser; the server
+         still validates again, because browser checks can be bypassed. -->
+    <form id="task-form">
+      <label for="task-title" class="visually-hidden">New task</label>
+      <input id="task-title" type="text" placeholder="What needs to be done?"
+             maxlength="200" required autocomplete="off">
+      <button type="submit">Add</button>
+    </form>
+
+    <!-- Status / error messages. role="status" makes screen readers announce changes. -->
+    <p id="message" role="status"></p>
+
+    <!-- app.js fills this list with tasks from GET /api/tasks -->
+    <ul id="task-list"></ul>
+  </main>
+</body>
+</html>

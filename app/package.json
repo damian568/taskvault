@@ -1,0 +1,17 @@
+{
+  "name": "taskvault-app",
+  "version": "1.0.0",
+  "description": "TaskVault - small internal task tracker (Express + PostgreSQL)",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.13.1"
+  }
+}

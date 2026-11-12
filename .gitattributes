@@ -1,0 +1,9 @@
+# .gitattributes - tells Git how to handle line endings for some file types.
+#
+# Windows ends lines with CRLF (\r\n), Linux with LF (\n).
+# These files are used INSIDE Linux containers. With CRLF, a shell script fails
+# with errors like "/bin/sh^M: bad interpreter" or "\r: not found".
+# "eol=lf" forces LF line endings on every OS, including Windows checkouts.
+*.sh   text eol=lf
+*.sql  text eol=lf
+*.conf text eol=lf
