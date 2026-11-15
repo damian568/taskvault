@@ -91,4 +91,8 @@ docker compose ps               # db and app should show "healthy"
 
 ## 6. Most difficult part
 
-> _To be written by me._
+The most difficult part was an error that gave me no information. When the app could not reach the database, the log only showed ERROR: with nothing after it. I expected something like ECONNREFUSED, so at first I did not know if the problem was DNS, the network or the database itself.
+
+I found out that on newer Node.js versions, when a host name has both an IPv6 and an IPv4 address (like localhost), Node tries both. If both fail, it throws an AggregateError, and its message is empty. The real reason is in err.code. I changed the logging to use err.code when the message is empty, and the log then showed ECONNREFUSED.
+
+What I learned: logs are the main evidence when troubleshooting, so they must always say what failed. This also helped me understand the troubleshooting scenario: ENOTFOUND, ECONNREFUSED and timeout point to different problems.
