@@ -8,7 +8,7 @@
 
 const path = require('path');                          // Node built-in: builds file paths safely
 const express = require('express');                    // minimal web framework (routing + JSON)
-const { pool, connectWithRetry } = require('./db');    // our db module (db.js)
+const { pool, connectWithRetry, describe } = require('./db');   // our db module (db.js)
 
 // Port inside the container. Not published to the host - only nginx talks to it.
 const PORT = Number(process.env.PORT) || 3000;
@@ -52,7 +52,7 @@ app.get('/health', async (req, res) => {
     await pool.query('SELECT 1');
     res.json({ status: 'ok', database: 'reachable' });
   } catch (err) {
-    console.error(`Health check failed: ${err.message}`);
+    console.error(`Health check failed: ${describe(err)}`);   // describe(): never an empty message
     res.status(503).json({ status: 'error', database: 'unreachable' });   // 503 = Service Unavailable
   }
 });
@@ -122,7 +122,7 @@ app.use('/api', (req, res) => res.status(404).json({ error: 'not found' }));
 // message, because table names / SQL / stack traces would help attackers.
 // ("next" is unused, but must be listed - Express counts the parameters.)
 app.use((err, req, res, next) => {
-  console.error(`ERROR ${req.method} ${req.path}: ${err.message}`);
+  console.error(`ERROR ${req.method} ${req.path}: ${describe(err)}`);
   // Client mistakes (e.g. 400 malformed JSON, 413 body too large) keep their 4xx code;
   // everything else is a 500 Internal Server Error.
   const status = err.status >= 400 && err.status < 500 ? err.status : 500;

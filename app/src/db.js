@@ -30,15 +30,26 @@ const pool = new Pool({
 // an 'error' event. In Node an 'error' event nobody listens to CRASHES the process,
 // so we listen and just log it. The pool opens a fresh connection next time.
 pool.on('error', (err) => {
-  console.error(`ERROR: idle database connection lost: ${err.message}`);
+  console.error(`ERROR: idle database connection lost: ${describe(err)}`);
 });
 
 // Turn low-level driver errors into short, readable log lines.
 // All timeout variants become "connection timeout"; anything else is shown as-is
 // (e.g. "getaddrinfo ENOTFOUND db" = DNS problem, "connect ECONNREFUSED" = nothing listening).
+//
+// WHY the fallbacks: since Node 20, when a host name has several addresses
+// (e.g. "localhost" = IPv6 ::1 AND IPv4 127.0.0.1), Node tries all of them
+// ("Happy Eyeballs"). If every attempt fails, it throws an AggregateError whose
+// .message is EMPTY - the details are in .errors (one per address) and .code.
+// Logging only err.message would print "ERROR: " and hide the real cause.
 function describe(err) {
-  if (/timeout/i.test(err.message)) return 'connection timeout';
-  return err.message;
+  const message =
+    err.message ||                                              // normal errors
+    (err.errors || []).map((e) => e.message).join('; ') ||      // AggregateError: list each attempt
+    err.code ||                                                 // last resort: e.g. "ECONNREFUSED"
+    'unknown error';
+  if (/timeout/i.test(message)) return 'connection timeout';
+  return message;
 }
 
 // Helper: wait for the given number of milliseconds (used between retries).
@@ -69,5 +80,5 @@ async function connectWithRetry(maxAttempts = 10, delayMs = 3000) {
   throw new Error(`Could not connect to database after ${maxAttempts} attempts`);
 }
 
-// Make the pool and the retry function available to server.js via require('./db').
-module.exports = { pool, connectWithRetry };
+// Make the pool, the retry function and the error formatter available to server.js.
+module.exports = { pool, connectWithRetry, describe };
